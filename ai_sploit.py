@@ -777,9 +777,10 @@ def attack_code_import(agent, output):
             success(f"Uploaded to: {actual_path}")
 
             # Allow manual path override
-            override = ask(f"Override review path? [{actual_path}]", actual_path)
-            if override and override != actual_path:
-                actual_path = override
+            do_override = input(f"  {BOLD}Override review path?{RESET} [{actual_path}] [y/n]: ").strip().lower()
+            if do_override == "y":
+                new_path = ask("Enter custom path", actual_path)
+                actual_path = new_path
                 info(f"Using path: {actual_path}")
         else:
             error(f"Upload failed: {r.status_code}")
