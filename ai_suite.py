@@ -947,8 +947,8 @@ def phase6_report(output_file: str = None) -> None:
             print(f"\n  {BOLD}{fp['agent']}{RESET}  →  {GREEN}{fp['model']}{RESET}")
             print(f"  {DIM}Method:{RESET} {fp['method']}  |  {DIM}API:{RESET} {fp['api_format']}")
             for raw in fp.get("raw_responses", [])[:1]:
-                print(f"\n  {DIM}# probe sent{RESET}")
-                print(f"  {DIM}│{RESET} {raw['probe']}")
+                label = raw.get("probe") or raw.get("technique") or "probe"
+                print(f"\n  {DIM}# probe sent [{label}]{RESET}")
                 response_block(raw["response"], "model response")
             divider()
 
@@ -1017,6 +1017,235 @@ def phase6_report(output_file: str = None) -> None:
         with open(output_file, "w") as f:
             json.dump(report, f, indent=2)
         print(f"\n  {GREEN}[+] Saved: {output_file}{RESET}")
+
+        # Generate HTML report alongside JSON
+        html_file = output_file.replace(".json", ".html")
+        if not html_file.endswith(".html"):
+            html_file += ".html"
+        generate_html_report(report, html_file)
+        print(f"  {GREEN}[+] HTML report: {html_file}{RESET}")
+
+
+def generate_html_report(report: dict, filepath: str) -> None:
+    """Generate a clean HTML report from scan results."""
+
+    healthy   = [a for a in report.get("agents", []) if a.get("healthy")]
+    surface   = {f"{s['host']}:{s['port']}": s for s in report.get("surface", [])}
+    fps       = {f"{f['host']}:{f['port']}": f for f in report.get("fingerprints", [])}
+    rags      = {f"{r['host']}:{r['port']}": r for r in report.get("rag", [])}
+    summary   = report.get("summary", {})
+    scan_time = report.get("scan_time", "")[:19].replace("T", " ")
+
+    def badge(text, color):
+        colors = {
+            "green":  ("rgba(57,211,83,0.12)",  "#39d353", "rgba(57,211,83,0.25)"),
+            "red":    ("rgba(229,56,59,0.12)",   "#e5383b", "rgba(229,56,59,0.25)"),
+            "cyan":   ("rgba(0,212,255,0.1)",    "#00d4ff", "rgba(0,212,255,0.2)"),
+            "yellow": ("rgba(240,192,64,0.1)",   "#f0c040", "rgba(240,192,64,0.2)"),
+            "dim":    ("rgba(255,255,255,0.04)", "#5a6475", "rgba(255,255,255,0.08)"),
+        }
+        bg, fg, border = colors.get(color, colors["dim"])
+        return (f'<span style="background:{bg};color:{fg};border:1px solid {border};'
+                f'padding:2px 7px;border-radius:3px;font-size:10px;'
+                f'font-family:monospace;letter-spacing:1px">{text}</span>')
+
+    def tool_badges(tools_str):
+        if not tools_str:
+            return ""
+        danger = ["file_read", "file_search", "config_lookup",
+                  "web_fetch", "memory_search", "kb_search"]
+        tools  = [t for t in danger if t in tools_str]
+        return " ".join(badge(t, "cyan") for t in tools)
+
+    def endpoint_badges(endpoints):
+        interesting = ["upload", "summarize", "browse", "review", "debug"]
+        found_eps   = [e.split()[-1] for e in endpoints
+                       if any(x in e.lower() for x in interesting)]
+        return " ".join(badge(e, "yellow") for e in found_eps[:6])
+
+    # Build agent cards
+    agent_cards = ""
+    for a in sorted(healthy, key=lambda x: (x["host"], x["port"])):
+        key  = f"{a['host']}:{a['port']}"
+        fp   = fps.get(key, {})
+        rag  = rags.get(key, {})
+        surf = surface.get(key, {})
+
+        model    = fp.get("model") or "Unknown"
+        method   = fp.get("method") or ""
+        api_fmt  = fp.get("api_format") or surf.get("api_format") or "unknown"
+        rag_on   = rag.get("rag_active", False)
+        tools    = surf.get("tools") or ""
+        endpoints= surf.get("endpoints") or []
+        purpose  = (surf.get("purpose") or "")[:200]
+        conf     = fp.get("stealth_confidence", "")
+
+        rag_badge   = badge("RAG ✓", "green") if rag_on else badge("No RAG", "dim")
+        model_badge = badge(model, "cyan") if model != "Unknown" else badge("Unknown", "dim")
+        conf_str    = f'<span style="color:#5a6475;font-size:10px;margin-left:6px">{conf}</span>' if conf else ""
+
+        # Next steps
+        next_steps = []
+        if "file_read" in tools or "config_lookup" in tools:
+            next_steps.append("→ System prompt extraction")
+        if "web_fetch" in tools:
+            next_steps.append("→ CSS web injection")
+        if "memory_search" in tools:
+            next_steps.append("→ Session enumeration")
+        if "kb_search" in tools and rag_on:
+            next_steps.append("→ Goal hijacking / crescendo")
+        if any("upload" in e and "summarize" in e2
+               for e in endpoints for e2 in endpoints):
+            next_steps.append("→ Document fragmentation")
+        if any("debug" in e.lower() for e in endpoints):
+            next_steps.append("→ /debug/db-schema (check unauthenticated)")
+
+        next_html = "".join(
+            f'<div style="color:#f0c040;font-size:11px;margin-top:4px">⚡ {s}</div>'
+            for s in next_steps
+        ) if next_steps else ""
+
+        # RAG documents
+        rag_docs = ""
+        if rag_on and rag.get("documents"):
+            rag_docs = "".join(
+                f'<div style="color:#39d353;font-size:11px">📄 {d}</div>'
+                for d in rag.get("documents", [])
+            )
+
+        agent_cards += f"""
+        <div style="background:#0f1218;border:1px solid #1e2530;border-radius:8px;
+                    padding:20px;margin-bottom:16px">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+            <span style="color:#e5383b;font-size:18px">●</span>
+            <span style="font-family:'Rajdhani',sans-serif;font-size:18px;
+                         font-weight:700;color:#c8d0dc;letter-spacing:1px">{a['agent']}</span>
+            <span style="color:#5a6475;font-size:12px">{a['host']}:{a['port']}</span>
+          </div>
+
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;
+                      gap:8px;margin-bottom:12px">
+            <div>
+              <div style="font-size:9px;color:#5a6475;letter-spacing:1px;
+                          text-transform:uppercase;margin-bottom:4px">Model</div>
+              {model_badge}{conf_str}
+            </div>
+            <div>
+              <div style="font-size:9px;color:#5a6475;letter-spacing:1px;
+                          text-transform:uppercase;margin-bottom:4px">RAG</div>
+              {rag_badge}
+            </div>
+            <div>
+              <div style="font-size:9px;color:#5a6475;letter-spacing:1px;
+                          text-transform:uppercase;margin-bottom:4px">API</div>
+              <span style="font-family:monospace;font-size:11px;color:#8a94a6">{api_fmt}</span>
+            </div>
+            <div>
+              <div style="font-size:9px;color:#5a6475;letter-spacing:1px;
+                          text-transform:uppercase;margin-bottom:4px">Method</div>
+              <span style="font-family:monospace;font-size:11px;color:#8a94a6">{method}</span>
+            </div>
+          </div>
+
+          <div style="margin-bottom:10px">
+            <div style="font-size:9px;color:#5a6475;letter-spacing:1px;
+                        text-transform:uppercase;margin-bottom:6px">Tools</div>
+            {tool_badges(tools) or '<span style="color:#5a6475;font-size:11px">none detected</span>'}
+          </div>
+
+          <div style="margin-bottom:10px">
+            <div style="font-size:9px;color:#5a6475;letter-spacing:1px;
+                        text-transform:uppercase;margin-bottom:6px">Interesting Endpoints</div>
+            {endpoint_badges(endpoints) or '<span style="color:#5a6475;font-size:11px">none</span>'}
+          </div>
+
+          {f'<div style="margin-bottom:10px"><div style="font-size:9px;color:#5a6475;letter-spacing:1px;text-transform:uppercase;margin-bottom:6px">RAG Documents</div>{rag_docs}</div>' if rag_docs else ""}
+
+          {f'<div style="background:rgba(10,12,15,0.8);border-left:2px solid #2a3340;padding:8px 10px;font-size:11px;color:#5a6475;font-style:italic;margin-bottom:10px;border-radius:2px">{purpose}...</div>' if purpose else ""}
+
+          {f'<div style="border-top:1px solid #1e2530;padding-top:10px">{next_html}</div>' if next_html else ""}
+        </div>"""
+
+    # Summary stats
+    rag_count = summary.get("rag_enabled", 0)
+    html = f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>AISuite Recon Report</title>
+<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@600;700&family=Share+Tech+Mono&family=Inter:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  * {{ box-sizing:border-box;margin:0;padding:0 }}
+  body {{ background:#0a0c0f;color:#c8d0dc;font-family:'Inter',sans-serif;
+          font-size:13px;padding:32px;max-width:1100px;margin:0 auto }}
+  body::before {{ content:'';position:fixed;inset:0;
+    background:repeating-linear-gradient(0deg,transparent,transparent 2px,
+    rgba(0,0,0,0.06) 2px,rgba(0,0,0,0.06) 4px);pointer-events:none;z-index:9999 }}
+  ::-webkit-scrollbar {{ width:4px }} ::-webkit-scrollbar-thumb {{ background:#1e2530 }}
+</style>
+</head>
+<body>
+
+<div style="border-bottom:1px solid #1e2530;padding-bottom:20px;margin-bottom:28px">
+  <div style="font-family:'Rajdhani',sans-serif;font-size:28px;font-weight:700;
+              color:#e5383b;letter-spacing:3px;text-transform:uppercase">
+    AI<span style="color:#5a6475;font-weight:400">Suite</span>
+    <span style="font-size:14px;color:#5a6475;margin-left:12px;letter-spacing:1px">
+      RECON REPORT
+    </span>
+  </div>
+  <div style="font-family:'Share Tech Mono',monospace;font-size:11px;
+              color:#5a6475;margin-top:6px;letter-spacing:1px">
+    {scan_time} &nbsp;·&nbsp;
+    {summary.get("hosts",0)} host(s) &nbsp;·&nbsp;
+    {len(healthy)} agents &nbsp;·&nbsp;
+    {rag_count} RAG-active &nbsp;·&nbsp;
+    {report.get("duration_seconds",0)}s
+  </div>
+</div>
+
+<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:28px">
+  {''.join(f'''<div style="background:#0f1218;border:1px solid #1e2530;border-radius:6px;
+    padding:16px;text-align:center">
+    <div style="font-family:\'Rajdhani\',sans-serif;font-size:28px;font-weight:700;color:{c}">{v}</div>
+    <div style="font-size:10px;color:#5a6475;letter-spacing:1px;text-transform:uppercase;margin-top:4px">{l}</div>
+  </div>'''
+  for v,l,c in [
+    (summary.get("hosts",0),      "Hosts",        "#00d4ff"),
+    (len(healthy),                "Agents",        "#e5383b"),
+    (rag_count,                   "RAG Active",    "#39d353"),
+    (len(summary.get("phases_skipped",[])), "Skipped", "#f0c040"),
+  ])}
+</div>
+
+<div style="font-family:'Rajdhani',sans-serif;font-size:16px;font-weight:700;
+            color:#c8d0dc;letter-spacing:2px;text-transform:uppercase;
+            margin-bottom:16px;padding-bottom:8px;
+            border-bottom:1px solid #1e2530">
+  Agent Inventory
+</div>
+
+{agent_cards}
+
+<div style="margin-top:28px;padding-top:20px;border-top:1px solid #1e2530">
+  <div style="font-family:'Rajdhani',sans-serif;font-size:16px;font-weight:700;
+              color:#f0c040;letter-spacing:2px;text-transform:uppercase;margin-bottom:12px">
+    Not Covered — Manual Steps Required
+  </div>
+  {''.join(f'<div style="font-size:11px;color:#5a6475;padding:4px 0;font-family:monospace">→ {item}</div>'
+           for item in report.get("not_covered", []))}
+</div>
+
+<div style="margin-top:20px;font-family:\'Share Tech Mono\',monospace;
+            font-size:10px;color:#2a3340;text-align:center">
+  AISuite v1.1 — OSAI AI-300 — NVIDIA Kill Chain: RECON Phase
+</div>
+
+</body>
+</html>"""
+
+    with open(filepath, "w") as f:
+        f.write(html)
 
 # ── Main ──────────────────────────────────────────────────────────────────────
 def main() -> None:
