@@ -78,10 +78,10 @@ python3 ai_suite.py -t 192.168.1.21-30 -o results.json
 # Run nmap automatically (comma separated)
 python3 ai_suite.py -t 192.168.1.21,192.168.1.22 -o results.json
 
-# Stealth mode — low-risk fingerprinting only (won't trigger D03)
+# Stealth mode — low-risk fingerprinting only 
 python3 ai_suite.py -t 192.168.1.21-30 -o results.json --stealth
 
-# Rate limited — N seconds between every request (prevents D02)
+# Rate limited — N seconds between every request 
 python3 ai_suite.py -t 192.168.1.21-30 -o results.json --rate 10
 
 # Full stealth engagement (recommended)
@@ -254,20 +254,6 @@ ai_sploit.py -f agents.json        →  results.json
 session_enum.py (if memory_search tools found)
 ```
 
----
-
-## Detection Rules Reference
-
-| Rule | Triggers On | Bypass |
-|------|------------|--------|
-| D02 — Sequential Enumeration | Rapid requests to AI paths | `--rate 10` |
-| D03 — Identity Probing | Multiple identity questions same session | `--stealth` |
-| AIM3: Prompt Injection Keywords | "ignore", "instead output" | Character spacing, framing |
-| AIM3: Instruction Strings in Ingested Content | Injection phrases in uploaded files | Document fragmentation |
-| AIM3: Imperative Commands in Stored Memory | "direct users to", "tell them to" | Descriptive phrasing |
-
----
-
 ## Requirements
 
 ```bash
@@ -291,4 +277,4 @@ Use responsibly and only against systems you have explicit permission to test.
 
 ---
 
-*Built during OffSec AI-300 — OSAI | Jeffrey Simpson CISSP, CISM*
+
