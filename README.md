@@ -11,9 +11,12 @@ Structured around the **NVIDIA AI Kill Chain**: Recon → Poison → Hijack → 
 
 ```
 AISuite/
-├── ai_enum.py      # Phase 1-2: Quick agent discovery (health check only)
-├── ai_suite.py     # Phase 1-5: Full interactive recon suite
-└── ai_sploit.py    # Phase 6+: Targeted exploitation suite
+├── ai_enum.py              # Phase 1-2: Quick agent discovery (health check only)
+├── ai_suite.py             # Phase 1-5: Full interactive recon suite
+├── ai_sploit.py            # Phase 6+: Targeted exploitation suite
+├── session_enum.py         # Session enumeration module
+├── OSAI_Exam_Checklist.md  # OSAI exam preparation checklist
+└── toolkit.html            # Interactive toolkit reference page
 ```
 
 ---
