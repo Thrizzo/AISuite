@@ -1,0 +1,46 @@
+[build-system]
+requires = ["setuptools>=68.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "aisuite"
+version = "2.0.0"
+description = "AI Red Team Engagement Toolkit"
+readme = "README.md"
+license = {text = "MIT"}
+requires-python = ">=3.11"
+authors = [{name = "Jeffrey Simpson"}]
+
+dependencies = [
+    "requests>=2.31.0",
+    "numpy>=1.24.0",
+    "click>=8.1.0",
+    "fastapi>=0.104.0",
+    "uvicorn[standard]>=0.24.0",
+    "sqlalchemy>=2.0.0",
+    "alembic>=1.13.0",
+    "sse-starlette>=1.6.0",
+    "jinja2>=3.1.0",
+]
+
+[project.optional-dependencies]
+embedding = [
+    "sentence-transformers>=2.2.0",
+    "transformers>=4.30.0",
+    "torch>=2.0.0",
+]
+pdf = [
+    "weasyprint>=60.0",
+]
+db = [
+    "psycopg2-binary>=2.9.0",
+]
+full = [
+    "aisuite[embedding,pdf,db]",
+]
+
+[project.scripts]
+aisuite = "aisuite.ui.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["aisuite*"]
