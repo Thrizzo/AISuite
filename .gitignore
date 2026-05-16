@@ -1,0 +1,43 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+build/
+dist/
+.eggs/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Editor / OS
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# Jupyter
+.ipynb_checkpoints/
+
+# AISuite runtime — engagement data lives in user home, never in repo
+.aisuite/
+
+# Binary artifacts / lab outputs
+*.npy
+*.zip
+*.pdf
+
+# Backups / accidental saves
+*~
+*.bak
+"ai_suite (*).py"
+"from huggingface_hub*.py"
+
+# Local secrets
+.env
+.env.*
+!.env.example
