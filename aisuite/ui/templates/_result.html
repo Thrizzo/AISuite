@@ -1,0 +1,24 @@
+{% set color = phase_color[technique.phase] %}
+<div class="space-y-3">
+  <div class="flex items-center gap-3">
+    <span class="text-xs uppercase tracking-widest text-{{ color }}-400 font-semibold">{{ technique.phase }}</span>
+    <span class="text-xs font-mono text-zinc-500">{{ technique.id }}</span>
+    {% if result.success %}
+    <span class="text-xs bg-green-900/40 text-green-400 border border-green-900 px-2 py-0.5 rounded">success</span>
+    {% else %}
+    <span class="text-xs bg-zinc-900 text-zinc-500 border border-zinc-800 px-2 py-0.5 rounded">no creds detected</span>
+    {% endif %}
+  </div>
+
+  {% if result.curl %}
+  <details class="text-xs">
+    <summary class="cursor-pointer text-zinc-500 hover:text-zinc-200 mb-2">curl preview</summary>
+    <pre class="bg-zinc-950 border border-zinc-800 rounded p-3 overflow-x-auto text-cyan-300 whitespace-pre-wrap">{{ result.curl }}</pre>
+  </details>
+  {% endif %}
+
+  <div>
+    <div class="text-xs uppercase tracking-wider text-zinc-500 mb-1">Transcript</div>
+    <pre class="bg-zinc-950 border border-zinc-800 rounded p-3 text-xs text-zinc-300 whitespace-pre-wrap overflow-x-auto max-h-[460px] overflow-y-auto">{{ result.output }}</pre>
+  </div>
+</div>

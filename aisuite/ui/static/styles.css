@@ -1,0 +1,26 @@
+/* AISuite GUI — minimal extras on top of Tailwind CDN.
+   Tailwind handles 95 % of the styling; this file exists for things
+   Tailwind doesn't address well: the htmx-indicator helper and a few
+   color hints used by the dynamically composed class names in
+   technique.html (Tailwind CDN JIT picks these up at runtime). */
+
+.htmx-indicator { opacity: 0; transition: opacity 0.2s; }
+.htmx-request .htmx-indicator { opacity: 1; }
+.htmx-request.htmx-indicator { opacity: 1; }
+
+/* Safelist for phase-color class names composed dynamically.
+   Tailwind CDN scans inline class attrs; these are here so the
+   JIT actually sees them at startup even if no template is rendered
+   yet at scan time. */
+.text-cyan-400, .text-amber-400, .text-red-400, .text-fuchsia-400, .text-emerald-400,
+.bg-cyan-400, .bg-amber-400, .bg-red-400, .bg-fuchsia-400, .bg-emerald-400,
+.bg-cyan-600, .bg-amber-600, .bg-red-600, .bg-fuchsia-600, .bg-emerald-600,
+.bg-cyan-500, .bg-amber-500, .bg-red-500, .bg-fuchsia-500, .bg-emerald-500,
+.hover\:border-cyan-600:hover, .hover\:border-amber-600:hover,
+.hover\:border-red-600:hover, .hover\:border-fuchsia-600:hover,
+.hover\:border-emerald-600:hover,
+.focus\:border-cyan-500:focus, .focus\:border-amber-500:focus,
+.focus\:border-red-500:focus, .focus\:border-fuchsia-500:focus,
+.focus\:border-emerald-500:focus { /* tailwind sentinel */ }
+
+pre { font-family: 'JetBrains Mono', 'Consolas', 'Menlo', monospace; }

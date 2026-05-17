@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>{% block title %}AISuite v2.0{% endblock %}</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://unpkg.com/htmx.org@1.9.10"></script>
+<link rel="stylesheet" href="/static/styles.css">
+</head>
+<body class="bg-zinc-950 text-zinc-200 font-sans antialiased">
+<nav class="border-b border-zinc-800 bg-zinc-900/80 backdrop-blur">
+  <div class="max-w-6xl mx-auto px-6 py-3 flex items-center gap-6">
+    <a href="/" class="font-bold tracking-widest text-red-500">AI<span class="text-zinc-500 font-normal">SUITE</span></a>
+    <span class="text-xs text-zinc-500 uppercase tracking-wider">Guided Engagement</span>
+    {% block nav_extra %}{% endblock %}
+  </div>
+</nav>
+
+<main class="max-w-6xl mx-auto px-6 py-8">
+  {% block content %}{% endblock %}
+</main>
+
+<footer class="text-xs text-zinc-600 text-center pb-6">
+  AISuite v2.0 — OSAI Toolkit · NVIDIA AI Kill Chain
+</footer>
+</body>
+</html>

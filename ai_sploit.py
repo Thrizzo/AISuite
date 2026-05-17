@@ -11,11 +11,29 @@ Usage:
 import argparse
 import json
 import os
+import re
 import subprocess
 import sys
+import tempfile
 import time
 from datetime import datetime, timedelta
 from concurrent.futures import ThreadPoolExecutor, as_completed
+
+# Path inside the OS tempdir where this tool drops scratch files (uploads,
+# generated HTML for /browse attacks, code-import payloads). Falls back to
+# the system tempdir on Windows; was hardcoded /tmp in v1.0.
+TMP_DIR = os.path.join(tempfile.gettempdir(), "ai_sploit")
+os.makedirs(TMP_DIR, exist_ok=True)
+
+
+def _is_char_spaced(text: str) -> bool:
+    """True when the response looks like every character is space-separated.
+
+    v1.0 used `"  " in text or " " in text` which is true for any normal
+    sentence. We instead look for a run of at least 8 single-character
+    tokens (the marker of an actual character-spacing leak).
+    """
+    return bool(re.search(r"(?:\b\S\s){8,}", text))
 
 try:
     import requests
@@ -266,8 +284,8 @@ def attack_direct_injection(agent, output):
         success("Response received")
         record("direct_injection", agent, message, response_text, True)
 
-        # Decode character-spaced response
-        if "  " in response_text or " " in response_text:
+        # Decode character-spaced response (heuristic: long run of single-char tokens)
+        if _is_char_spaced(response_text):
             decoded = response_text.replace("  ", " ").replace(" ", "").strip()
             if len(decoded) > 5:
                 found(f"Decoded: {decoded}")
@@ -442,8 +460,8 @@ def attack_document_fragmentation(agent, output):
         doc_content = "\n".join(lines)
 
     # Write files
-    template_path = "/tmp/ai_sploit_template.txt"
-    doc_path      = "/tmp/ai_sploit_doc.txt"
+    template_path = os.path.join(TMP_DIR, "ai_sploit_template.txt")
+    doc_path      = os.path.join(TMP_DIR, "ai_sploit_doc.txt")
     with open(template_path, "w") as f: f.write(template_content)
     with open(doc_path, "w") as f:      f.write(doc_content)
 
@@ -474,8 +492,9 @@ def attack_document_fragmentation(agent, output):
     # Upload template
     info("Uploading template...")
     try:
-        r = requests.post(f"http://{host}:{port}/upload",
-                          files={"file": open(template_path, "rb")}, timeout=15)
+        with open(template_path, "rb") as f:
+            r = requests.post(f"http://{host}:{port}/upload",
+                              files={"file": f}, timeout=15)
         if r.status_code == 200:
             success(f"Template uploaded: {r.json()}")
         else:
@@ -488,8 +507,9 @@ def attack_document_fragmentation(agent, output):
     # Upload document
     info("Uploading document...")
     try:
-        r = requests.post(f"http://{host}:{port}/upload",
-                          files={"file": open(doc_path, "rb")}, timeout=15)
+        with open(doc_path, "rb") as f:
+            r = requests.post(f"http://{host}:{port}/upload",
+                              files={"file": f}, timeout=15)
         if r.status_code == 200:
             success(f"Document uploaded: {r.json()}")
         else:
@@ -590,10 +610,11 @@ def attack_css_injection(agent, output):
 
     debug_mode = ask("Show raw JSON response for debugging? [y/n]", "n").lower() == "y"
 
+    webtest_dir = os.path.join(TMP_DIR, "webtest")
+    os.makedirs(webtest_dir, exist_ok=True)
     while True:
         # Write HTML file with innocent filename
-        html_path = f"/tmp/webtest/{filename}"
-        os.makedirs("/tmp/webtest", exist_ok=True)
+        html_path = os.path.join(webtest_dir, filename)
         with open(html_path, "w") as f:
             f.write(html_content)
 
@@ -603,7 +624,7 @@ def attack_css_injection(agent, output):
 
         divider("PREVIEW")
         print(f"\n  {DIM}# Start HTTP server first:{RESET}")
-        print(f"  {CYAN}python3 -m http.server {attacker_port} -d /tmp/webtest &{RESET}")
+        print(f"  {CYAN}python3 -m http.server {attacker_port} -d {webtest_dir} &{RESET}")
         print(f"\n  {DIM}# File served as:{RESET} {YELLOW}{filename}{RESET}")
         print(f"\n  {DIM}# Hidden payload (stripped by logging pipeline):{RESET}")
         print(f"  {YELLOW}{hidden_payload}{RESET}")
@@ -616,7 +637,7 @@ def attack_css_injection(agent, output):
             success("HTTP server appears to be running")
         except Exception:
             warn("HTTP server not detected — start it first:")
-            print(f"  {CYAN}python3 -m http.server {attacker_port} -d /tmp/webtest &{RESET}\n")
+            print(f"  {CYAN}python3 -m http.server {attacker_port} -d {webtest_dir} &{RESET}\n")
 
         choice = input(
             f"  {BOLD}[y]{RESET} Send  "
@@ -734,7 +755,7 @@ def attack_code_import(agent, output):
         code_content = "\n".join(lines)
 
     # Write code file
-    code_path = "/tmp/ai_sploit_payload.py"
+    code_path = os.path.join(TMP_DIR, "ai_sploit_payload.py")
     with open(code_path, "w") as f:
         f.write(code_content)
 
@@ -744,7 +765,7 @@ def attack_code_import(agent, output):
     review_endpoint  = ask("Review endpoint", "/review")
     payload_key      = ask("Payload key (path / code / file)", "path")
     code_filename    = ask("Upload filename (keep innocent)", "data_loader.py")
-    code_path        = f"/tmp/{code_filename}"
+    code_path        = os.path.join(TMP_DIR, code_filename)
     debug_mode       = ask("Show raw JSON response? [y/n]", "n").lower() == "y"
 
     with open(code_path, "w") as f:
@@ -769,8 +790,9 @@ def attack_code_import(agent, output):
     # Upload
     info("Uploading code...")
     try:
-        r = requests.post(f"http://{host}:{port}/upload",
-                          files={"file": open(code_path, "rb")}, timeout=15)
+        with open(code_path, "rb") as f:
+            r = requests.post(f"http://{host}:{port}/upload",
+                              files={"file": f}, timeout=15)
         if r.status_code == 200:
             upload_resp = r.json()
             actual_path = upload_resp.get("path", code_path)

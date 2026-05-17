@@ -1,0 +1,128 @@
+{% extends "base.html" %}
+{% block title %}{{ technique.id }} {{ technique.title }} — AISuite{% endblock %}
+{% block nav_extra %}
+<a href="/" class="text-xs text-zinc-500 hover:text-zinc-200">engagements</a>
+<span class="text-zinc-700">|</span>
+<a href="/engagement/{{ engagement.id }}" class="text-xs text-zinc-500 hover:text-zinc-200">← {{ engagement.name }}</a>
+{% endblock %}
+{% block content %}
+
+{% set color = phase_color[technique.phase] %}
+
+<header class="border-b border-zinc-800 pb-4 mb-6">
+  <div class="flex items-center gap-3 text-xs uppercase tracking-widest">
+    <span class="text-{{ color }}-400 font-semibold">{{ technique.phase }}</span>
+    <span class="text-zinc-700">·</span>
+    <span class="font-mono text-zinc-500">{{ technique.id }}</span>
+    {% if not technique.implemented %}
+    <span class="text-[10px] tracking-wider text-zinc-600 border border-zinc-700 px-2 py-0.5 rounded ml-2">v2.1 PLACEHOLDER</span>
+    {% endif %}
+  </div>
+  <h1 class="text-2xl font-semibold text-zinc-100 mt-1">{{ technique.title }}</h1>
+  <p class="text-sm text-zinc-400 mt-2 leading-relaxed">{{ technique.description }}</p>
+  {% if technique.refs %}
+  <div class="mt-3 flex gap-2 flex-wrap">
+    {% for r in technique.refs %}
+    <span class="text-[10px] font-mono uppercase tracking-wider px-2 py-1 bg-zinc-900 border border-zinc-700 rounded text-zinc-400">{{ r }}</span>
+    {% endfor %}
+  </div>
+  {% endif %}
+</header>
+
+<section class="grid lg:grid-cols-5 gap-6">
+
+  <div class="lg:col-span-2">
+    <h2 class="text-xs uppercase tracking-widest text-zinc-500 mb-3">Configuration</h2>
+    <form hx-post="/engagement/{{ engagement.id }}/execute/{{ technique.id }}"
+          hx-target="#exec-result"
+          hx-swap="innerHTML"
+          hx-indicator="#exec-spinner"
+          class="space-y-3">
+
+      {% if technique.needs_agent %}
+      <div>
+        <label class="block text-xs uppercase tracking-wider text-zinc-500 mb-1">Target agent</label>
+        {% if agents %}
+        <select name="agent_id" required
+                class="w-full bg-zinc-900 border border-zinc-700 rounded px-3 py-2 text-sm focus:outline-none focus:border-{{ color }}-500">
+          {% for a in agents %}
+          <option value="{{ a.id }}">{{ a.name or 'unnamed' }} — {{ a.host }}:{{ a.port }}</option>
+          {% endfor %}
+        </select>
+        {% else %}
+        <div class="text-xs text-yellow-500 border border-yellow-900/40 bg-yellow-950/30 rounded px-3 py-2">
+          No agents in this engagement yet. Run
+          <a href="/engagement/{{ engagement.id }}/t/R01" class="underline">R01 — Agent Discovery</a> first.
+        </div>
+        {% endif %}
+      </div>
+      {% endif %}
+
+      {% for p in technique.params %}
+      <div>
+        <label class="block text-xs uppercase tracking-wider text-zinc-500 mb-1">
+          {{ p.label }}{% if p.required %} <span class="text-red-500">*</span>{% endif %}
+        </label>
+        {% if p.kind == 'textarea' %}
+        <textarea name="{{ p.name }}" rows="5" {% if p.required %}required{% endif %}
+                  placeholder="{{ p.placeholder }}"
+                  class="w-full bg-zinc-900 border border-zinc-700 rounded px-3 py-2 text-sm font-mono focus:outline-none focus:border-{{ color }}-500">{{ p.default }}</textarea>
+        {% elif p.kind == 'select' %}
+        <select name="{{ p.name }}"
+                class="w-full bg-zinc-900 border border-zinc-700 rounded px-3 py-2 text-sm focus:outline-none focus:border-{{ color }}-500">
+          {% for opt in p.options %}
+          <option value="{{ opt }}" {% if opt == p.default %}selected{% endif %}>{{ opt }}</option>
+          {% endfor %}
+        </select>
+        {% elif p.kind == 'number' %}
+        <input name="{{ p.name }}" type="number" value="{{ p.default }}"
+               {% if p.required %}required{% endif %} placeholder="{{ p.placeholder }}"
+               class="w-full bg-zinc-900 border border-zinc-700 rounded px-3 py-2 text-sm font-mono focus:outline-none focus:border-{{ color }}-500">
+        {% else %}
+        <input name="{{ p.name }}" type="text" value="{{ p.default }}"
+               {% if p.required %}required{% endif %} placeholder="{{ p.placeholder }}"
+               class="w-full bg-zinc-900 border border-zinc-700 rounded px-3 py-2 text-sm font-mono focus:outline-none focus:border-{{ color }}-500">
+        {% endif %}
+        {% if p.help %}<p class="text-[11px] text-zinc-500 mt-1">{{ p.help }}</p>{% endif %}
+      </div>
+      {% endfor %}
+
+      <div class="flex items-center gap-3 pt-2">
+        <button class="bg-{{ color }}-600 hover:bg-{{ color }}-500 text-white text-sm px-5 py-2 rounded font-medium tracking-wide">
+          Execute
+        </button>
+        <span id="exec-spinner" class="htmx-indicator text-xs text-zinc-500">running…</span>
+      </div>
+    </form>
+  </div>
+
+  <div class="lg:col-span-3">
+    <h2 class="text-xs uppercase tracking-widest text-zinc-500 mb-3">Live output</h2>
+    <div id="exec-result" class="min-h-[200px]">
+      {% if results %}
+        {% include "_result.html" with context %}
+        {% set hide_history = true %}
+      {% else %}
+      <div class="border border-zinc-800 border-dashed rounded p-6 text-sm text-zinc-500 italic">
+        Configure parameters and click Execute. Output appears here.
+      </div>
+      {% endif %}
+    </div>
+
+    {% if results %}
+    <h2 class="text-xs uppercase tracking-widest text-zinc-500 mt-6 mb-3">Recent runs of this technique</h2>
+    <ul class="text-xs space-y-1">
+      {% for r in results %}
+      <li class="font-mono text-zinc-500">
+        <span class="text-zinc-400">{{ r.timestamp[:19].replace('T', ' ') }}</span>
+        — <span class="text-zinc-300">{{ r.target }}</span>
+        {% if r.success %}<span class="text-green-500">[+]</span>{% else %}<span class="text-zinc-600">[—]</span>{% endif %}
+      </li>
+      {% endfor %}
+    </ul>
+    {% endif %}
+  </div>
+
+</section>
+
+{% endblock %}

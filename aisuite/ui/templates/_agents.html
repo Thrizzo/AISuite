@@ -1,0 +1,25 @@
+{% if agents %}
+<ul class="space-y-1.5">
+  {% for a in agents %}
+  <li class="border border-zinc-800 rounded px-3 py-2 text-xs">
+    <div class="flex items-center justify-between gap-2">
+      <span class="font-medium text-zinc-200">{{ a.name or 'unnamed' }}</span>
+      {% if a.healthy %}
+      <span class="w-1.5 h-1.5 rounded-full bg-green-500"></span>
+      {% else %}
+      <span class="w-1.5 h-1.5 rounded-full bg-zinc-600"></span>
+      {% endif %}
+    </div>
+    <div class="font-mono text-zinc-500">{{ a.host }}:{{ a.port }}</div>
+    {% if a.api_format %}
+    <div class="text-zinc-600">api: <span class="text-zinc-400 font-mono">{{ a.api_format }}</span></div>
+    {% endif %}
+    {% if a.purpose %}
+    <div class="text-zinc-500 mt-1 italic truncate" title="{{ a.purpose }}">{{ a.purpose[:80] }}{% if a.purpose|length > 80 %}…{% endif %}</div>
+    {% endif %}
+  </li>
+  {% endfor %}
+</ul>
+{% else %}
+<p class="text-xs text-zinc-600 italic">No agents discovered yet.</p>
+{% endif %}

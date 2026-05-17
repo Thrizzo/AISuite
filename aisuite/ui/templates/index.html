@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block title %}Engagements — AISuite{% endblock %}
+{% block content %}
+
+<section class="grid md:grid-cols-2 gap-8">
+
+  <div>
+    <h1 class="text-xl font-semibold mb-4">Engagements</h1>
+    {% if engagements %}
+    <ul class="space-y-2">
+      {% for e in engagements %}
+      <li class="border border-zinc-800 rounded p-3 hover:border-zinc-700 transition">
+        <div class="flex justify-between items-start gap-4">
+          <div class="min-w-0 flex-1">
+            <a href="/engagement/{{ e.id }}" class="font-medium text-zinc-100 hover:text-red-400 truncate block">{{ e.name }}</a>
+            <div class="text-xs text-zinc-500 mt-1 font-mono">
+              {{ e.id }} · {{ e.created_at[:19].replace('T', ' ') }}
+              · {{ e.agents }} agent(s) · {{ e.results }} result(s)
+            </div>
+            {% if e.notes %}<div class="text-xs text-zinc-400 mt-2">{{ e.notes }}</div>{% endif %}
+          </div>
+          <form method="post" action="/engagements/{{ e.id }}/delete"
+                onsubmit="return confirm('Delete engagement {{ e.name }} and its database?')">
+            <button class="text-xs text-zinc-500 hover:text-red-400">delete</button>
+          </form>
+        </div>
+      </li>
+      {% endfor %}
+    </ul>
+    {% else %}
+    <p class="text-sm text-zinc-500">No engagements yet. Create one →</p>
+    {% endif %}
+  </div>
+
+  <div>
+    <h1 class="text-xl font-semibold mb-4">New engagement</h1>
+    <form method="post" action="/engagements" class="space-y-3">
+      <div>
+        <label class="block text-xs uppercase tracking-wider text-zinc-500 mb-1">Name</label>
+        <input name="name" required class="w-full bg-zinc-900 border border-zinc-700 rounded px-3 py-2 text-sm focus:outline-none focus:border-red-500" placeholder="MegaCorp Pentest Q2 2026">
+      </div>
+      <div>
+        <label class="block text-xs uppercase tracking-wider text-zinc-500 mb-1">Notes (optional)</label>
+        <textarea name="notes" rows="3" class="w-full bg-zinc-900 border border-zinc-700 rounded px-3 py-2 text-sm focus:outline-none focus:border-red-500" placeholder="ROE, scope, key stakeholders..."></textarea>
+      </div>
+      <button class="bg-red-600 hover:bg-red-500 text-white text-sm px-4 py-2 rounded font-medium">Create</button>
+    </form>
+  </div>
+
+</section>
+
+{% endblock %}

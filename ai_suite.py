@@ -13,9 +13,11 @@ Usage:
 
 import argparse
 import json
+import os
 import re
 import subprocess
 import sys
+import tempfile
 import time
 from datetime import datetime
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -260,18 +262,6 @@ def parse_nmap_file(filepath: str) -> dict[str, list[int]]:
             targets[host] = uvicorn_ports
     return targets
 
-def run_nmap(target_spec: str) -> dict[str, list[int]]:
-    outfile = f"/tmp/ai_suite_nmap_{int(time.time())}.txt"
-    cmd = ["nmap", "-sV", "--open", "-p", "1-10000",
-           "-oG", outfile] + target_spec.split()
-    info(f"Running: {' '.join(cmd)}")
-    try:
-        subprocess.run(cmd, check=True)
-    except subprocess.CalledProcessError as e:
-        error(f"nmap failed: {e}")
-        sys.exit(1)
-    return parse_nmap_file(outfile)
-
 def expand_target(target_str: str) -> list[str]:
     """Convert comma-separated or range to list of nmap target args."""
     parts = [t.strip() for t in target_str.split(",")]
@@ -291,7 +281,7 @@ def expand_target(target_str: str) -> list[str]:
 
 def run_nmap(target_str: str) -> dict[str, list[int]]:
     targets = expand_target(target_str)
-    outfile = f"/tmp/ai_suite_nmap_{int(time.time())}.txt"
+    outfile = os.path.join(tempfile.gettempdir(), f"ai_suite_nmap_{int(time.time())}.txt")
     cmd = ["nmap", "-sV", "--open", "-p", "1-10000", "-oG", outfile] + targets
     info(f"Running nmap on {len(targets)} host(s)...")
     info(f"Command: {' '.join(cmd)}")

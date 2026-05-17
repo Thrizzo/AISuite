@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+{% block title %}{{ engagement.name }} — AISuite{% endblock %}
+{% block nav_extra %}
+<a href="/" class="text-xs text-zinc-500 hover:text-zinc-200">← engagements</a>
+<span class="text-zinc-700">|</span>
+<span class="text-xs text-zinc-400">{{ engagement.name }}</span>
+<span class="text-xs text-zinc-600 font-mono">{{ engagement.id }}</span>
+{% endblock %}
+{% block content %}
+
+<section class="grid md:grid-cols-3 gap-6">
+
+  <div class="md:col-span-2">
+    <h2 class="text-xs uppercase tracking-widest text-zinc-500 mb-3">NVIDIA AI Kill Chain</h2>
+
+    <div class="space-y-5">
+      {% for phase in phases %}
+      {% set techs = by_phase.get(phase, []) %}
+      {% if techs %}
+      {% set color = phase_color[phase] %}
+      <div>
+        <div class="flex items-center gap-3 mb-2">
+          <span class="inline-block w-2 h-2 rounded-full bg-{{ color }}-400"></span>
+          <h3 class="font-semibold tracking-wider text-{{ color }}-400">{{ phase }}</h3>
+          <span class="text-xs text-zinc-600">{{ techs|length }} technique(s)</span>
+        </div>
+        <ul class="space-y-1">
+          {% for t in techs %}
+          <li>
+            <a href="/engagement/{{ engagement.id }}/t/{{ t.id }}"
+               class="block rounded border border-zinc-800 hover:border-{{ color }}-600 hover:bg-zinc-900/50 px-3 py-2 transition">
+              <div class="flex items-center gap-3">
+                <span class="text-xs font-mono text-zinc-500 w-10">{{ t.id }}</span>
+                <span class="text-sm text-zinc-200 flex-1">{{ t.title }}</span>
+                {% if not t.implemented %}
+                <span class="text-[10px] uppercase tracking-wider text-zinc-600 border border-zinc-700 px-2 py-0.5 rounded">v2.1</span>
+                {% endif %}
+              </div>
+              <div class="text-xs text-zinc-500 mt-1 ml-[3.25rem] leading-snug">{{ t.summary }}</div>
+            </a>
+          </li>
+          {% endfor %}
+        </ul>
+      </div>
+      {% endif %}
+      {% endfor %}
+    </div>
+  </div>
+
+  <aside class="space-y-6">
+    <div>
+      <div class="flex items-center justify-between mb-2">
+        <h2 class="text-xs uppercase tracking-widest text-zinc-500">Agents ({{ agents|length }})</h2>
+        <button hx-get="/engagement/{{ engagement.id }}/agents" hx-target="#agents-panel"
+                class="text-xs text-zinc-500 hover:text-zinc-200">refresh</button>
+      </div>
+      <div id="agents-panel">
+        {% include "_agents.html" %}
+      </div>
+      <p class="text-xs text-zinc-600 mt-3">Add agents via <span class="text-cyan-400">R01 — Agent Discovery</span>.</p>
+    </div>
+
+    <div>
+      <div class="flex items-center justify-between mb-2">
+        <h2 class="text-xs uppercase tracking-widest text-zinc-500">Recent results</h2>
+        <button hx-get="/engagement/{{ engagement.id }}/results" hx-target="#results-panel"
+                class="text-xs text-zinc-500 hover:text-zinc-200">refresh</button>
+      </div>
+      <div id="results-panel">
+        {% include "_results.html" %}
+      </div>
+    </div>
+  </aside>
+
+</section>
+
+{% endblock %}

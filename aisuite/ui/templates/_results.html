@@ -1,0 +1,20 @@
+{% if results %}
+<ul class="space-y-1.5 text-xs">
+  {% for r in results %}
+  <li class="border border-zinc-800 rounded px-3 py-2">
+    <div class="flex items-center justify-between gap-2">
+      <span class="font-mono text-zinc-400">{{ r.technique_id }}</span>
+      {% if r.success %}
+      <span class="text-green-500">[+]</span>
+      {% else %}
+      <span class="text-zinc-600">[—]</span>
+      {% endif %}
+    </div>
+    <div class="font-mono text-zinc-500">{{ r.target }}</div>
+    <div class="text-zinc-600">{{ r.timestamp[:19].replace('T', ' ') }}</div>
+  </li>
+  {% endfor %}
+</ul>
+{% else %}
+<p class="text-xs text-zinc-600 italic">No results recorded yet.</p>
+{% endif %}
