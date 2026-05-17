@@ -99,14 +99,9 @@
   <div class="lg:col-span-3">
     <h2 class="text-xs uppercase tracking-widest text-zinc-500 mb-3">Live output</h2>
     <div id="exec-result" class="min-h-[200px]">
-      {% if results %}
-        {% include "_result.html" with context %}
-        {% set hide_history = true %}
-      {% else %}
       <div class="border border-zinc-800 border-dashed rounded p-6 text-sm text-zinc-500 italic">
         Configure parameters and click Execute. Output appears here.
       </div>
-      {% endif %}
     </div>
 
     {% if results %}
